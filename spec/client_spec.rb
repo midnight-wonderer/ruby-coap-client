@@ -19,7 +19,7 @@ describe Client do
     subject { Client.new(max_payload: 512) }
 
     let(:host) { 'coap.me' }
-    let(:payload) { Faker::Lorem.paragraphs(5).join("\n") }
+    let(:payload) { Faker::Lorem.paragraphs(number: 5).join("\n") }
     let(:payload_utf8) { '♥' + payload }
 
     describe '#post' do

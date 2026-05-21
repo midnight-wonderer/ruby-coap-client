@@ -1,5 +1,3 @@
-require 'coveralls'
-Coveralls.wear_merged!
 
 #$:.unshift File.expand_path('../lib', File.dirname(__FILE__))
 require 'core'

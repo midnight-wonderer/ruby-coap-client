@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'benchmark'
 
 describe Block do
   subject { Block.new(0, false, 16) }

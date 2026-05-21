@@ -6,18 +6,7 @@ describe Transmission do
       subject { Transmission.new }
 
       it 'should set socket correctly' do
-        expect(subject.socket.class).to eq(Celluloid::IO::UDPSocket)
-        expect(subject.socket.class).not_to eq(::UDPSocket)
-        expect(subject.address_family).to eq(Socket::AF_INET6)
-      end
-    end
-
-    context 'with ordinary UDPSocket' do
-      subject { Transmission.new(socket_class: ::UDPSocket) }
-
-      it 'should set socket correctly' do
         expect(subject.socket.class).to eq(::UDPSocket)
-        expect(subject.socket.class).not_to eq(Celluloid::IO::UDPSocket)
         expect(subject.address_family).to eq(Socket::AF_INET6)
       end
     end

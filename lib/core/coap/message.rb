@@ -136,6 +136,7 @@ module CoRE
             end
             decoded_options[oname] = decoder.call(v)
           else
+            raise ArgumentError, "unrecognized critical option #{k}" if k.odd?
             decoded_options[k] = v # we don't know what that is -- keep it in raw
           end
         end
@@ -160,6 +161,7 @@ module CoRE
         # dpos keeps our current position in parsing d
         b1, mcode, mid = d.unpack("CCn"); dpos = 4
         toklen = b1 & 0xf
+        raise ArgumentError, "Reserved token length #{toklen}" if toklen > 8
         token = d.byteslice(dpos, toklen); dpos += toklen
         b1 >>= 4
         tt = TTYPES[b1 & 0x3]
@@ -175,7 +177,10 @@ module CoRE
           tl1 = d.getbyte(dpos); dpos += 1
           raise ArgumentError, "option is not there at #{dpos} with oc #{orig_numopt}" unless tl1 # XXX
 
-          break if tl1 == 0xff
+          if tl1 == 0xff
+            raise ArgumentError, "Payload marker without payload" if dpos == dlen
+            break
+          end
 
           odelta, dpos = deklausify(d, dpos, tl1 >> 4)
           olen, dpos = deklausify(d, dpos, tl1 & 0xF)

@@ -19,7 +19,7 @@ module CoRE
         14 => [:max_age,        *uint_once(0, 4, 60)], # core-coap-12 [RFC7252]
         15 => [:uri_query,      *str_many(0, 255)],    # core-coap-12 [RFC7252]
         17 => [:accept,         *uint_once(0, 2)],     # core-coap-18! [RFC7252]
-        TOKEN_ON => [:token,    *o256_once(1, 8, 0)],  # core-coap-12 -> opaq_once(1, 8, EMPTY)
+        TOKEN_ON => [:token,    *opaq_once(0, 8, nil)],
         20 => [:location_query, *str_many(0, 255)],    # core-coap-12 [RFC7252]
         23 => [:block2,         *uint_once(0, 3)],     # core-block-10 [RFC7959, RFC8323]
         27 => [:block1,         *uint_once(0, 3)],     # core-block-10 [RFC7959, RFC8323]

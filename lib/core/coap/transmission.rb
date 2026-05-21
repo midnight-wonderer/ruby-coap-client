@@ -23,7 +23,7 @@ module CoRE
           @socket_class   = @socket.class
           @address_family = @socket.addr.first
         else
-          @socket_class   = options[:socket_class]   || Celluloid::IO::UDPSocket
+          @socket_class   = options[:socket_class]   || ::UDPSocket
           @address_family = options[:address_family] || Socket::AF_INET6
           @socket         = @socket_class.new(@address_family)
         end
@@ -47,30 +47,67 @@ module CoRE
       # Receive from socket and return parsed CoAP message. (ACK is sent on CON
       # messages.)
       def receive(options = {})
+        @dedup_cache ||= {}
         retry_count = options[:retry_count] || 0
-        timeout = (options[:timeout] || @recv_timeout) ** (retry_count + 1)
+        base_timeout = options.key?(:timeout) ? options[:timeout] : @recv_timeout
+
+        if base_timeout == 0 || base_timeout.nil?
+          timeout = nil
+        else
+          jitter = 1.0 + Kernel.rand * 0.5
+          timeout = base_timeout * (2 ** retry_count) * jitter
+        end
 
         mid   = options[:mid]
         flags = mid.nil? ? 0 : Socket::MSG_PEEK
 
-        data = Timeout.timeout(timeout) do
-          @socket.recvfrom(1152, flags)
+        start_time = Time.now
+
+        loop do
+          remaining = nil
+          unless timeout.nil?
+            elapsed = Time.now - start_time
+            remaining = timeout - elapsed
+            break if remaining <= 0
+          end
+
+          r, = IO.select([@socket], nil, nil, remaining)
+          raise Timeout::Error, "execution expired" if r.nil?
+          data = @socket.recvfrom(1152, flags)
+
+          answer = CoAP.parse(data[0].force_encoding('BINARY'))
+
+          if mid == answer.mid
+            r, = IO.select([@socket], nil, nil, 1.0)
+            raise Timeout::Error, "execution expired" if r.nil?
+            @socket.recvfrom(1152)
+          end
+
+          sender_host = data[1][3]
+          sender_port = data[1][1]
+          key = [answer.mid, sender_host, sender_port]
+
+          if @dedup_cache.key?(key)
+            if answer.tt == :con && (cached_ack = @dedup_cache[key])
+              @socket.send(cached_ack, 64, sender_host, sender_port)
+            end
+            next
+          end
+
+          ack_bytes = nil
+          if answer.tt == :con
+            message = Message.new(:ack, 0, answer.mid, nil, {})
+            ack_bytes = message.to_wire
+            @socket.send(ack_bytes, 64, sender_host, sender_port)
+          end
+
+          @dedup_cache.shift if @dedup_cache.size >= 100
+          @dedup_cache[key] = ack_bytes
+
+          return answer
         end
 
-        answer = CoAP.parse(data[0].force_encoding('BINARY'))
-
-        if mid == answer.mid
-          Timeout.timeout(1) { @socket.recvfrom(1152) }
-        end
-
-        if answer.tt == :con
-          message = Message.new(:ack, 0, answer.mid, nil,
-            {token: answer.options[:token]})
-
-          send(message, data[1][3])
-        end
-
-        answer
+        raise Timeout::Error, "execution expired"
       end
 
       # Send +message+ (retransmit if necessary) and wait for answer. Returns

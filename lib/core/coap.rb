@@ -17,12 +17,10 @@ module CoRE
     end
   end
 end
-
-require 'celluloid/current'
-require 'celluloid/io'
 require 'ipaddr'
 require 'logger'
 require 'resolv-ipv6favor'
+require 'securerandom'
 require 'socket'
 require 'timeout'
 require 'yaml'
